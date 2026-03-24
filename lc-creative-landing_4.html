@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LC Creative — Where logic builds worlds.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@1,300&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #080810;
+    --resonance: #FF5E1A;
+    --signal: #3ECFFF;
+    --pattern: #C000FF;
+    --depth: #39FF8A;
+  }
+
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg);
+    cursor: default;
+  }
+
+  #canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+  }
+
+  #scanlines {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 3px,
+      rgba(0,0,0,0.07) 3px,
+      rgba(0,0,0,0.07) 4px
+    );
+  }
+
+  #vignette {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse 85% 75% at 50% 50%,
+      transparent 55%,
+      rgba(8,8,16,0.7) 100%
+    );
+  }
+
+  #ui {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  /* ─── HEADER ─── */
+  #header {
+    position: absolute;
+    top: clamp(28px, 4.5vh, 56px);
+    left: clamp(28px, 4vw, 64px);
+    animation: headerIn 2s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  #title {
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    font-size: clamp(26px, 3.2vw, 52px);
+    letter-spacing: 0.20em;
+    color: #ffffff;
+    line-height: 1;
+  }
+
+  #tagline {
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(13px, 1.5vw, 22px);
+    color: rgba(255,255,255,0.35);
+    margin-top: 0.35em;
+  }
+
+  /* ─── LAYER LABELS — fixed left column ─── */
+  #layer-nav {
+    position: absolute;
+    left: clamp(28px, 4vw, 64px);
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(28px, 5vh, 56px);
+    pointer-events: auto;
+    z-index: 12;
+  }
+
+  .layer-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(18px, 2.8vw, 42px);
+    letter-spacing: 0.18em;
+    opacity: 0;
+    transition: opacity 0.5s ease, text-shadow 0.4s ease;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    position: relative;
+    padding-left: 20px;
+  }
+
+  .layer-label::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 8px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.3;
+    transition: width 0.4s ease, opacity 0.4s ease;
+  }
+
+  .layer-label:hover::before,
+  .layer-label.active::before {
+    width: 14px;
+    opacity: 0.8;
+  }
+
+  .layer-label:hover,
+  .layer-label.active {
+    opacity: 1 !important;
+    text-shadow:
+      0 0 20px currentColor,
+      0 0 40px currentColor,
+      0 0 80px currentColor;
+  }
+
+  /* ─── SYSTEM KEY ─── */
+  #system-key {
+    position: absolute;
+    bottom: clamp(28px, 4.5vh, 56px);
+    right: clamp(28px, 4vw, 64px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: fadeUp 1.5s 2.6s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  .key-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(8px, 0.8vw, 12px);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.25);
+  }
+
+  .key-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  /* ─── FOOTER ─── */
+  #footer {
+    position: absolute;
+    bottom: clamp(28px, 4.5vh, 56px);
+    left: clamp(28px, 4vw, 64px);
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(8px, 0.7vw, 11px);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.15);
+    animation: fadeUp 1.5s 3s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  /* ─── CORNERS ─── */
+  .corner {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-color: rgba(255,255,255,0.06);
+    border-style: solid;
+    border-width: 0;
+    animation: fadeUp 1.5s 2.8s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  .corner-tl { top: 20px; left: 20px; border-width: 1px 0 0 1px; }
+  .corner-tr { top: 20px; right: 20px; border-width: 1px 1px 0 0; }
+  .corner-bl { bottom: 20px; left: 20px; border-width: 0 0 1px 1px; }
+  .corner-br { bottom: 20px; right: 20px; border-width: 0 1px 1px 0; }
+
+  /* ─── MORPH INDICATOR ─── */
+  #morph-hint {
+    position: absolute;
+    top: clamp(28px, 4.5vh, 56px);
+    right: clamp(28px, 4vw, 64px);
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(7px, 0.65vw, 10px);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.0);
+    transition: color 0.8s ease;
+  }
+
+  #morph-hint.visible {
+    color: rgba(255,255,255,0.2);
+  }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes headerIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+<div id="vignette"></div>
+<div id="scanlines"></div>
+
+<div id="ui">
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div>
+  <div class="corner corner-br"></div>
+
+  <div id="header">
+    <div id="title">LC Creative</div>
+    <div id="tagline">Where logic builds worlds.</div>
+  </div>
+
+  <div id="layer-nav">
+    <div class="layer-label" id="label-0" style="color:#FF5E1A">Resonance</div>
+    <div class="layer-label" id="label-1" style="color:#3ECFFF">Signal</div>
+    <div class="layer-label" id="label-2" style="color:#C000FF">Pattern</div>
+    <div class="layer-label" id="label-3" style="color:#39FF8A">Depth</div>
+  </div>
+
+  <div id="morph-hint"></div>
+
+  <div id="system-key">
+    <div class="key-item"><span>Depth</span><span class="key-dot" style="background:#39FF8A"></span></div>
+    <div class="key-item"><span>Pattern</span><span class="key-dot" style="background:#C000FF"></span></div>
+    <div class="key-item"><span>Signal</span><span class="key-dot" style="background:#3ECFFF"></span></div>
+    <div class="key-item"><span>Resonance</span><span class="key-dot" style="background:#FF5E1A"></span></div>
+  </div>
+
+  <div id="footer">Leonardo Caruso &mdash; São Paulo</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  LC CREATIVE — Layered Wireframe Scene
+//  Text morphing · Updated Depth color
+// ═══════════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('canvas');
+
+// ── Renderer ──────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x080810, 1);
+
+// ── Scene ─────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x080810, 0.025);
+
+// ── Camera ────────────────────────────────────────────────────
+const camera = new THREE.PerspectiveCamera(
+  50,
+  window.innerWidth / window.innerHeight,
+  0.1, 200
+);
+camera.position.set(4.0, 10.0, 18.0);
+camera.lookAt(0, 0.5, 0);
+
+// ═══════════════════════════════════════════════════════════════
+// TEXT SAMPLING — sample pixel positions from rendered text
+// ═══════════════════════════════════════════════════════════════
+function sampleTextPositions(text, gridW, gridH, planeSize) {
+  // Render text on offscreen canvas
+  const cvs = document.createElement('canvas');
+  const pw = 320;
+  const ph = 80;
+  cvs.width = pw;
+  cvs.height = ph;
+  const ctx = cvs.getContext('2d');
+
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, pw, ph);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 60px "Bebas Neue", Arial Narrow, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text.toUpperCase(), pw / 2, ph / 2);
+
+  const imgData = ctx.getImageData(0, 0, pw, ph).data;
+
+  // Build a lookup: isTextPixel[y][x]
+  // We only use the central band of the canvas that the text occupies
+  function isPixelOn(px, py) {
+    if (px < 0 || px >= pw || py < 0 || py >= ph) return false;
+    return imgData[(py * pw + px) * 4] > 100;
+  }
+
+  // PlaneGeometry(w,h,segW,segH) creates vertices in order:
+  // row by row from top-left, where:
+  //   x goes from -w/2 to +w/2 (columns, left to right)
+  //   y goes from +h/2 to -h/2 (rows, top to bottom)
+  //   z = 0
+  // We return a "z-displacement" array: 0 for text, -1.4 for non-text
+  const totalVerts = gridW * gridH;
+  const zDisp = new Float32Array(totalVerts);
+
+  for (let row = 0; row < gridH; row++) {
+    for (let col = 0; col < gridW; col++) {
+      const idx = row * gridW + col;
+
+      // Map grid (col,row) to canvas pixel space
+      const canvasX = Math.round((col / (gridW - 1)) * (pw - 1));
+      const canvasY = Math.round((row / (gridH - 1)) * (ph - 1));
+
+      // Check a 3x3 neighborhood for more solid text detection
+      let isText = false;
+      for (let dy = -1; dy <= 1 && !isText; dy++) {
+        for (let dx = -1; dx <= 1 && !isText; dx++) {
+          if (isPixelOn(canvasX + dx, canvasY + dy)) isText = true;
+        }
+      }
+
+      // Text vertices: raised up (positive z = "hill")
+      // Non-text vertices: pushed down (negative z = "valley")
+      zDisp[idx] = isText ? 0.6 : -1.4;
+    }
+  }
+
+  return zDisp;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LAYER DEFINITIONS
+// ═══════════════════════════════════════════════════════════════
+const LAYER_DEFS = [
+  { name: 'Resonance', y:  5.4, color: 0xFF5E1A, rgb: [1.0, 0.369, 0.102] },
+  { name: 'Signal',    y:  1.8, color: 0x3ECFFF, rgb: [0.243, 0.812, 1.0] },
+  { name: 'Pattern',   y: -1.8, color: 0xC000FF, rgb: [0.753, 0.0,   1.0] },
+  { name: 'Depth',     y: -5.4, color: 0x39FF8A, rgb: [0.224, 1.0,   0.541] },
+];
+
+const PLANE_SEG  = 42;
+const PLANE_SIZE = 14;
+const GRID_W     = PLANE_SEG + 1; // 43 vertices per side
+const GRID_H     = PLANE_SEG + 1;
+const layers     = [];
+
+// Pre-generate text target positions for each layer
+const textTargets = LAYER_DEFS.map(def =>
+  sampleTextPositions(def.name, GRID_W, GRID_H, PLANE_SIZE)
+);
+
+LAYER_DEFS.forEach((def, li) => {
+  // ── Primary wireframe mesh ──
+  const geo     = new THREE.PlaneGeometry(PLANE_SIZE, PLANE_SIZE, PLANE_SEG, PLANE_SEG);
+  const origPos = geo.attributes.position.array.slice();
+
+  const wireMat = new THREE.MeshBasicMaterial({
+    color:       def.color,
+    wireframe:   true,
+    transparent: true,
+    opacity:     0,
+  });
+
+  const wireMesh = new THREE.Mesh(geo, wireMat);
+  wireMesh.rotation.x = -Math.PI / 2;
+  wireMesh.position.y = def.y;
+  scene.add(wireMesh);
+
+  // ── Atmospheric fill ──
+  const fillGeo  = new THREE.PlaneGeometry(PLANE_SIZE, PLANE_SIZE, 1, 1);
+  const fillMat  = new THREE.MeshBasicMaterial({
+    color:       def.color,
+    transparent: true,
+    opacity:     0,
+    side:        THREE.DoubleSide,
+    depthWrite:  false,
+  });
+  const fillMesh = new THREE.Mesh(fillGeo, fillMat);
+  fillMesh.rotation.x = -Math.PI / 2;
+  fillMesh.position.y = def.y - 0.01;
+  scene.add(fillMesh);
+
+  layers.push({
+    def,
+    geo,
+    origPos,
+    wireMesh,
+    wireMat,
+    fillMesh,
+    fillMat,
+    labelEl:   document.getElementById('label-' + li),
+    hovered:   false,
+    morphed:   false,
+    morphT:    0, // 0 = wave, 1 = text
+    opacity:   0,
+    fadeDelay: li * 0.7 + 0.5,
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PARTICLES — floating between layers
+// ═══════════════════════════════════════════════════════════════
+function buildParticles() {
+  const count = 600;
+  const pos   = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    pos[i * 3]     = (Math.random() - 0.5) * PLANE_SIZE * 0.85;
+    pos[i * 3 + 1] = (Math.random() - 0.5) * 14.0;
+    pos[i * 3 + 2] = (Math.random() - 0.5) * PLANE_SIZE * 0.85;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+  const mat = new THREE.PointsMaterial({
+    color:       0xffffff,
+    size:        0.04,
+    transparent: true,
+    opacity:     0,
+    sizeAttenuation: true,
+    depthWrite:  false,
+  });
+
+  const pts = new THREE.Points(geo, mat);
+  scene.add(pts);
+  return pts;
+}
+
+const particles = buildParticles();
+
+// ═══════════════════════════════════════════════════════════════
+// VERTICAL CONNECTORS
+// ═══════════════════════════════════════════════════════════════
+function buildConnectors() {
+  const count = 60;
+  const verts = [];
+  for (let i = 0; i < count; i++) {
+    const x = (Math.random() - 0.5) * PLANE_SIZE * 0.78;
+    const z = (Math.random() - 0.5) * PLANE_SIZE * 0.78;
+    verts.push(x, 6.5, z, x, -6.5, z);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3));
+
+  const mat = new THREE.LineBasicMaterial({
+    color:       0xffffff,
+    transparent: true,
+    opacity:     0,
+  });
+
+  const lines = new THREE.LineSegments(geo, mat);
+  scene.add(lines);
+  return lines;
+}
+
+const connectors = buildConnectors();
+
+// ═══════════════════════════════════════════════════════════════
+// LABEL HIGHLIGHT — sync label glow with layer hover/morph state
+// ═══════════════════════════════════════════════════════════════
+function updateLabels(layerFades) {
+  layers.forEach((layer, i) => {
+    const lblBase   = (layer.hovered || layer.morphed) ? 1.0 : 0.5;
+    const lblTarget = layerFades[i] * lblBase;
+    const curOp     = parseFloat(layer.labelEl.style.opacity || 0);
+    layer.labelEl.style.opacity = curOp + (lblTarget - curOp) * 0.06;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CLICK HANDLER — morph wireframe to text
+// ═══════════════════════════════════════════════════════════════
+let activeMorph = -1; // index of morphed layer, -1 = none
+
+layers.forEach((layer, i) => {
+  layer.labelEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+
+    if (activeMorph === i) {
+      // Toggle off
+      layer.morphed = false;
+      layer.labelEl.classList.remove('active');
+      activeMorph = -1;
+      document.getElementById('morph-hint').textContent = '';
+      document.getElementById('morph-hint').classList.remove('visible');
+    } else {
+      // Deactivate previous
+      if (activeMorph >= 0) {
+        layers[activeMorph].morphed = false;
+        layers[activeMorph].labelEl.classList.remove('active');
+      }
+      // Activate this
+      layer.morphed = true;
+      layer.labelEl.classList.add('active');
+      activeMorph = i;
+      document.getElementById('morph-hint').textContent = '[ ' + layer.def.name.toUpperCase() + ' — click to release ]';
+      document.getElementById('morph-hint').classList.add('visible');
+    }
+  });
+
+  layer.labelEl.addEventListener('mouseenter', () => { layer.hovered = true; });
+  layer.labelEl.addEventListener('mouseleave', () => { layer.hovered = false; });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// WAVE FUNCTION — generates organic terrain per layer
+// ═══════════════════════════════════════════════════════════════
+function waveZ(x, z, t, li) {
+  const s1 = Math.sin(x * 0.35 + t * 0.6  + li * 1.8) * 0.45;
+  const s2 = Math.sin(z * 0.28 + t * 0.4  + li * 2.5) * 0.35;
+  const s3 = Math.sin((x + z) * 0.22 + t * 0.3 + li * 0.9) * 0.25;
+  return s1 + s2 + s3;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ANIMATION LOOP
+// ═══════════════════════════════════════════════════════════════
+let sceneAge = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  sceneAge += 0.006;
+
+  const clock = performance.now() * 0.001;
+
+  // Global fade
+  const globalFade = Math.min(1, sceneAge * 0.28);
+  particles.material.opacity  = globalFade * 0.32;
+  connectors.material.opacity = globalFade * 0.04;
+
+  // Per-layer
+  const layerFades = [];
+  layers.forEach((layer, li) => {
+    const age       = Math.max(0, sceneAge - layer.fadeDelay);
+    const layerFade = Math.min(1, age * 0.45);
+    layerFades.push(layerFade);
+
+    // Morph interpolation — smooth ease
+    const morphTarget = layer.morphed ? 1 : 0;
+    const morphSpeed  = layer.morphed ? 0.035 : 0.045;
+    layer.morphT += (morphTarget - layer.morphT) * morphSpeed;
+    // Clamp to avoid floating point noise
+    if (Math.abs(layer.morphT - morphTarget) < 0.001) layer.morphT = morphTarget;
+
+    const baseOp = layer.hovered || layer.morphed ? 0.92 : 0.52;
+    const target = layerFade * baseOp;
+    layer.opacity += (target - layer.opacity) * 0.06;
+
+    layer.wireMat.opacity = layer.opacity;
+    layer.fillMat.opacity = layer.opacity * 0.035;
+
+    // ── Vertex animation ──
+    const posArr = layer.geo.attributes.position.array;
+    const orig   = layer.origPos;
+    const zDisp  = textTargets[li]; // z-displacement array (one value per vertex)
+    const mt     = layer.morphT;
+
+    for (let i = 0; i < posArr.length / 3; i++) {
+      const ix = i * 3;
+      const iy = i * 3 + 1;
+      const iz = i * 3 + 2;
+
+      // Original X,Y stay constant (plane grid)
+      const baseX = orig[ix];
+      const baseY = orig[iy];
+
+      // Wave displacement on Z
+      const waveVal = waveZ(baseX, baseY, clock, li);
+
+      // Text displacement on Z (from sampled text)
+      const textVal = zDisp[i];
+
+      // Interpolate: wave ↔ text
+      posArr[ix] = baseX;
+      posArr[iy] = baseY;
+      posArr[iz] = waveVal * (1 - mt) + textVal * mt;
+    }
+
+    layer.geo.attributes.position.needsUpdate = true;
+  });
+
+  // ── Update label opacities ──
+  updateLabels(layerFades);
+
+  // ── Slow camera drift ──
+  const driftX = Math.sin(clock * 0.08) * 0.5;
+  const driftZ = Math.cos(clock * 0.06) * 0.4;
+  camera.position.x = 4.0 + driftX;
+  camera.position.z = 18.0 + driftZ;
+  camera.lookAt(0, 0.5, 0);
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// ═══════════════════════════════════════════════════════════════
+// RESIZE
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
