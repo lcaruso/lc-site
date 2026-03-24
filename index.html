@@ -267,6 +267,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+  // ═══════════════════════════════════════════════════════════════
+  //  VERCEL SPEED INSIGHTS — Initialize tracking
+  // ═══════════════════════════════════════════════════════════════
+  window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+</script>
+<script defer data-sdkn="@vercel/speed-insights" data-sdkv="2.0.0" src="/_vercel/speed-insights/script.js"></script>
+<script>
 // ═══════════════════════════════════════════════════════════════
 //  LC CREATIVE — Layered Wireframe Scene
 //  Text morphing · Updated Depth color
@@ -490,7 +497,7 @@ const connectors = buildConnectors();
 
 // ═══════════════════════════════════════════════════════════════
 // LABEL HIGHLIGHT — sync label glow with layer hover/morph state
-// ═══════════════════════════════════════════════════════════════
+// ══════════��════════════════════════════════════════════════════
 function updateLabels(layerFades) {
   layers.forEach((layer, i) => {
     const lblBase   = (layer.hovered || layer.morphed) ? 1.0 : 0.5;
